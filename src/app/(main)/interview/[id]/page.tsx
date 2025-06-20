@@ -1,9 +1,17 @@
 import InterviewClientPage from './InterviewClientPage';
+import React from 'react'; // --- IMPORT REACT ---
 
-// This is now a Server Component. It can safely access params.
-export default function InterviewPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+// The props for a dynamic page are now treated as a Promise.
+// We type it explicitly and use React.use() to unwrap it.
+type PageProps = {
+    params: Promise<{ id: string }>
+}
 
-  // It renders the Client Component and passes the 'id' as a simple prop.
+export default function InterviewPage(props: PageProps) {
+  // --- THE DEFINITIVE FIX ---
+  // React.use() is the official way to resolve the params promise.
+  const { id } = React.use(props.params);
+
+  // It now renders the Client Component with the unwrapped id.
   return <InterviewClientPage id={id} />;
 }
