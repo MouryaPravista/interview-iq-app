@@ -1,13 +1,12 @@
 'use client'
 
-// --- FIX APPLIED: useCallback is now imported ---
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Webcam from "react-webcam";
 import WarningBanner from '@/components/ui/WarningBanner';
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision';
 import toast from 'react-hot-toast';
+import { createClient } from '@/lib/supabase/client'; // FIX: Added missing import
 
 interface Question { id: string; question_text: string; }
 interface InterviewData { id: string; questions: Question[]; }
@@ -15,14 +14,11 @@ interface InterviewData { id: string; questions: Question[]; }
 export default function InterviewClientPage({ id }: { id: string }) {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
-  // --- FIX APPLIED: Replaced 'any' with a more specific type ---
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null); // FIX: Correctly typed
   const faceDetectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [faceDetector, setFaceDetector] = useState<FaceDetector | undefined>(undefined);
-  const [isDetectorLoading, setIsDetectorLoading] = useState(true);
   const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
-  const [isInterviewLoading, setIsInterviewLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -30,8 +26,8 @@ export default function InterviewClientPage({ id }: { id: string }) {
   const [hasBeenWarned, setHasBeenWarned] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   
-  // --- FIX APPLIED: Wrapped function in useCallback to stabilize its identity ---
   const disqualifyAndMoveNext = useCallback(async (reason: string) => {
     if (!interviewData || isAnalyzing) return;
     console.log(`Disqualifying question for: ${reason}`);
@@ -45,14 +41,13 @@ export default function InterviewClientPage({ id }: { id: string }) {
       try {
         await fetch('/api/interview/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interviewId: id }) });
         router.push(`/results/${id}`);
-      } catch (_err) { // --- FIX APPLIED: Renamed unused var to _err ---
+      } catch (_err) { // FIX: Renamed unused var
         setIsAnalyzing(false);
         toast.error("An error occurred during the final analysis.");
       }
     }
   }, [interviewData, isAnalyzing, isListening, currentQuestionIndex, id, router]);
 
-  // --- FIX APPLIED: Wrapped function in useCallback ---
   const triggerWarning = useCallback((message: string) => {
     if (!hasBeenWarned) {
       setWarningMessage(message);
@@ -62,29 +57,31 @@ export default function InterviewClientPage({ id }: { id: string }) {
   }, [hasBeenWarned]);
 
   useEffect(() => {
-    const createFaceDetector = async () => { /* ... existing code ... */ };
-    createFaceDetector();
-    const handleVisibilityChange = () => { if (document.hidden) { hasBeenWarned ? disqualifyAndMoveNext("Tab Switched") : triggerWarning("Please remain on this tab. Switching again will disqualify the question."); } };
+    const createFaceDetector = async () => {
+      try {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+        const detector = await FaceDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite` }, runningMode: 'VIDEO' });
+        setFaceDetector(detector);
+      } catch (e) { console.error("Error initializing MediaPipe FaceDetector:", e); toast.error("Could not load anti-cheating feature."); }
+    };
+    void createFaceDetector();
+    const handleVisibilityChange = () => { if (document.hidden) { void (hasBeenWarned ? disqualifyAndMoveNext("Tab Switched") : triggerWarning("Please remain on this tab. Switching again will disqualify the question.")); } };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => { document.removeEventListener('visibilitychange', handleVisibilityChange); if (faceDetectionIntervalRef.current) clearInterval(faceDetectionIntervalRef.current); faceDetector?.close(); };
-  }, [hasBeenWarned, disqualifyAndMoveNext, triggerWarning, faceDetector]);
+  }, [hasBeenWarned, disqualifyAndMoveNext, triggerWarning, faceDetector]); // FIX: Added faceDetector to deps array
 
   const startFaceDetectionLoop = useCallback(() => {
-    console.log("Webcam is active. Starting face detection loop.");
     if (faceDetectionIntervalRef.current) clearInterval(faceDetectionIntervalRef.current);
     faceDetectionIntervalRef.current = setInterval(() => {
       if (faceDetector && webcamRef.current?.video && webcamRef.current.video.readyState === 4) {
         const detections = faceDetector.detectForVideo(webcamRef.current.video, Date.now());
-        if (detections.detections.length > 1) {
-            // --- FIX APPLIED: Clarified intent for ESLint ---
-            void disqualifyAndMoveNext("Multiple faces detected");
-        }
+        if (detections.detections.length > 1) { void (hasBeenWarned ? disqualifyAndMoveNext("Multiple faces detected") : triggerWarning("Multiple faces detected. Please ensure you are alone.")); }
       }
     }, 2500);
-  }, [faceDetector, hasBeenWarned, disqualifyAndMoveNext, triggerWarning]);
+  }, [faceDetector, hasBeenWarned, disqualifyAndMoveNext, triggerWarning]); // FIX: Added dependencies
   
-  useEffect(() => { const fetchInterviewData = async () => { /* ... */ }; fetchInterviewData(); }, [id, router]);
-  useEffect(() => { /* ... SpeechRecognition setup ... */
+  useEffect(() => { const fetchInterviewData = async () => { const supabase = createClient(); const { data, error } = await supabase.from('interviews').select(`id, questions (id, question_text)`).eq('id', id).single(); if (error || !data) { toast.error("Could not load interview data."); router.push('/dashboard'); } else { setInterviewData(data as InterviewData); setIsLoading(false); } }; void fetchInterviewData(); }, [id, router]);
+  useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
@@ -97,12 +94,9 @@ export default function InterviewClientPage({ id }: { id: string }) {
   }, []);
 
   const handleToggleListening = () => { if (isListening) { recognitionRef.current?.stop(); } else { setTranscript(''); recognitionRef.current?.start(); } setIsListening(!isListening); };
-  const handleNextQuestion = () => {
-    // --- FIX APPLIED: Clarified intent for ESLint ---
-    void disqualifyAndMoveNext("Manually moved to next question");
-  };
+  const handleNextQuestion = () => { void disqualifyAndMoveNext("Manually moved to next question"); };
 
-  if (isInterviewLoading || isDetectorLoading) return <div className="text-center p-10 font-semibold text-lg">Loading Interview & Security Features...</div>;
+  if (isLoading) return <div className="text-center p-10 font-semibold text-lg">Loading Interview & Security Features...</div>;
   if (!interviewData) return <div className="text-center p-10">Interview not found.</div>;
   const currentQuestion = interviewData.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === interviewData.questions.length - 1;
