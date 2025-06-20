@@ -40,7 +40,6 @@ export async function POST(request: Request) {
       if (!q.user_answer) return Promise.resolve();
 
       const prompt = getAnalysisPrompt(q.question_text, q.user_answer);
-      // CORRECTED MODEL NAME HERE: gemini-1.5-flash-latest
       const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`;
       
       const geminiResponse = await fetch(googleApiUrl, {
@@ -62,7 +61,7 @@ export async function POST(request: Request) {
         const analysis = JSON.parse(jsonString);
         totalScore += analysis.score || 0;
         return supabase.from('questions').update({ ai_feedback: analysis, score: analysis.score }).eq('id', q.id);
-      } catch (e) {
+      } catch (_e) { // --- FIX APPLIED HERE: Renamed unused var to _e ---
         console.error('Failed to parse AI response for question:', q.id, jsonString);
         return Promise.resolve();
       }

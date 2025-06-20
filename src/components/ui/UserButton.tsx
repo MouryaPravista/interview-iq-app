@@ -21,7 +21,6 @@ export default function UserButton() {
     fetchUser();
   }, [supabase.auth]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -34,8 +33,6 @@ export default function UserButton() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // --- FIX APPLIED HERE ---
-    // Changed the redirect path from '/login' to the landing page '/'.
     router.push('/');
     router.refresh();
   };
@@ -44,7 +41,8 @@ export default function UserButton() {
     if (!user) return '?';
     const fullName = user.user_metadata?.full_name;
     if (fullName) {
-      return fullName.split(' ').map((n: any[]) => n[0]).join('').toUpperCase();
+      // --- FIX APPLIED HERE: Replaced 'any[]' with the correct type 'string' ---
+      return fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
     }
     return user.email?.[0].toUpperCase() || 'U';
   };

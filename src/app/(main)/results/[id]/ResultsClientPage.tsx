@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CheckIcon, Cross2Icon as XIcon } from '@radix-ui/react-icons';
-import { SkeletonLoader } from '@/components/ui/SkeletonLoader'; // --- IMPORT SKELETON ---
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 // --- Types ---
 interface QuestionResult { id: string; question_text: string; user_answer: string; ai_feedback: { strengths: string[]; improvements: string[]; } | null; score: number | null; }
@@ -17,7 +17,6 @@ const PerformanceBar = ({ label, score }: { label: string; score: number }) => (
     </div>
 );
 
-// --- NEW: A component specifically for the skeleton loading state ---
 const ResultsSkeleton = () => (
     <div className="space-y-8">
         <SkeletonLoader className="h-9 w-1/3 rounded-md" />
@@ -38,9 +37,7 @@ const ResultsSkeleton = () => (
             </div>
         </div>
         <div className="bg-gray-800 rounded-lg border border-gray-700">
-            <div className="p-6">
-                <SkeletonLoader className="h-8 w-1/4 rounded-md" />
-            </div>
+            <div className="p-6"><SkeletonLoader className="h-8 w-1/4 rounded-md" /></div>
             <div className="space-y-4 p-6 border-t border-gray-700">
                 <SkeletonLoader className="h-24 w-full rounded-md" />
                 <SkeletonLoader className="h-24 w-full rounded-md" />
@@ -49,8 +46,6 @@ const ResultsSkeleton = () => (
     </div>
 );
 
-
-// --- The Main Client Page Component ---
 export default function ResultsClientPage({ id }: { id: string }) {
   const [results, setResults] = useState<ResultData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,14 +66,10 @@ export default function ResultsClientPage({ id }: { id: string }) {
       }
       setIsLoading(false);
     };
-    // Simulate a slightly longer load time to make the skeleton visible for testing
     setTimeout(fetchResults, 500);
   }, [id]);
 
-  // --- UPDATED LOADING STATE ---
-  // Now, instead of simple text, we render the detailed skeleton component.
   if (isLoading) return <ResultsSkeleton />;
-  
   if (error || !results) return <div className="text-center p-10"><h1 className="text-2xl font-bold text-red-400">Error</h1><p className="text-gray-400">{error || "Could not load results."}</p></div>;
 
   return (
@@ -91,6 +82,7 @@ export default function ResultsClientPage({ id }: { id: string }) {
                 <svg className="w-full h-full" viewBox="0 0 36 36"><path className="text-gray-700" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3"></path><path className="text-blue-500" strokeDasharray={`${results.overall_score}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"></path></svg>
                 <div className="absolute inset-0 flex items-center justify-center"><span className="text-4xl font-bold">{results.overall_score}</span></div>
             </div>
+            {/* --- FIX APPLIED HERE: Replaced ' with ' --- */}
             <p className="text-center text-gray-400 mt-4 text-sm">Good job! You did well, but there's room for improvement.</p>
         </div>
         <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg border border-gray-700">

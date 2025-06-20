@@ -1,18 +1,22 @@
-// This file is for global type declarations
+// This file is for global type declarations.
+// It tells TypeScript about browser-specific APIs that aren't in the default library.
 
-// We are extending the existing Window interface
-interface Window {
-  // Add a property for the standard SpeechRecognition API
-  SpeechRecognition: typeof SpeechRecognition;
-  
-  // Add a property for the vendor-prefixed version in WebKit browsers
-  webkitSpeechRecognition: typeof SpeechRecognition;
+// By using 'declare global', we are merging our custom types with the existing global scope.
+declare global {
+  // We extend the existing Window interface to include SpeechRecognition APIs.
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+
+  // We declare the SpeechRecognition class constructor.
+  // This is the modern and correct way to declare a global variable type.
+  const SpeechRecognition: {
+    prototype: SpeechRecognition;
+    new(): SpeechRecognition;
+  };
 }
 
-// We also need to declare the SpeechRecognition class itself
-// as it's not part of the standard DOM library.
-// This is a basic definition to satisfy TypeScript.
-declare var SpeechRecognition: {
-  prototype: SpeechRecognition;
-  new(): SpeechRecognition;
-};
+// We must add an empty export statement to make this a module,
+// which is required for global declarations to work correctly in a modular project.
+export {};

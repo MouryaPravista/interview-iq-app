@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { GitHubLogoIcon } from '@radix-ui/react-icons';
-import toast from 'react-hot-toast'; // --- IMPORT TOAST ---
+import toast from 'react-hot-toast';
 
 // A simple Google Icon SVG to match the style
 const GoogleIcon = () => (
@@ -21,7 +21,6 @@ export default function Login() {
     e.preventDefault();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // --- ALERT REPLACED WITH TOAST ---
       toast.error(error.message);
     } else {
       router.push('/dashboard');
@@ -35,14 +34,12 @@ export default function Login() {
       options: { redirectTo: `${location.origin}/api/auth/callback` },
     });
     if (error) {
-      // --- ADDED TOAST FOR OAUTH ERRORS ---
       toast.error(`Failed to sign in with ${provider}.`);
     }
   };
 
   return (
     <div>
-        {/* ... The rest of the JSX is unchanged ... */}
         <div className="text-center mb-6"><h1 className="text-3xl font-bold">Welcome Back</h1><p className="text-gray-400 mt-2">Log in to continue to Interview IQ</p></div>
         <div className="bg-[#111111] p-8 rounded-lg border border-gray-800">
             <h2 className="font-semibold mb-1 text-white">Log In</h2>
@@ -57,6 +54,7 @@ export default function Login() {
                 <button onClick={() => handleOAuthSignIn('github')} className="w-full flex items-center justify-center gap-2 bg-[#1C1C1C] border border-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-800 transition-colors"><GitHubLogoIcon/> GitHub</button>
                 <button onClick={() => handleOAuthSignIn('google')} className="w-full flex items-center justify-center gap-2 bg-[#1C1C1C] border border-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-800 transition-colors"><GoogleIcon/> Google</button>
             </div>
+            {/* --- FIX APPLIED HERE: Replaced ' with ' --- */}
             <p className="text-center text-sm text-gray-400 mt-8">Don't have an account? <a href="/signup" className="font-semibold text-white hover:underline">Sign up</a></p>
         </div>
     </div>

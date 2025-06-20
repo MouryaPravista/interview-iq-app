@@ -15,7 +15,6 @@ type CompletedInterview = {
   overall_score: number;
 };
 
-// --- NEW TYPE for an interview that has been started but not finished ---
 type InProgressInterview = {
     id: string;
     job_description: string;
@@ -25,50 +24,28 @@ export default function Dashboard() {
   const [jobDescription, setJobDescription] = useState('');
   const [difficulty, setDifficulty] = useState('Medium');
   const [isLoading, setIsLoading] = useState(false);
-  const [isPageLoading, setIsPageLoading] = useState(true); // To handle initial data fetch
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [recentInterviews, setRecentInterviews] = useState<CompletedInterview[]>([]);
-  // --- NEW STATE to hold the interview that needs to be resumed ---
   const [inProgressInterview, setInProgressInterview] = useState<InProgressInterview | null>(null);
   const router = useRouter();
 
-  // This one useEffect now handles fetching BOTH completed and in-progress interviews
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
-      
-      // 1. Check for an in-progress interview (overall_score is NULL)
-      const { data: inProgressData, error: inProgressError } = await supabase
-        .from('interviews')
-        .select('id, job_description')
-        .is('overall_score', null) // The key condition for an unfinished interview
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
+      const { data: inProgressData, error: inProgressError } = await supabase.from('interviews').select('id, job_description').is('overall_score', null).order('created_at', { ascending: false }).limit(1).single();
       if (inProgressData && !inProgressError) {
         setInProgressInterview(inProgressData);
       }
-
-      // 2. Fetch recent COMPLETED interviews (overall_score is NOT NULL)
-      const { data: completedData, error: completedError } = await supabase
-        .from('interviews')
-        .select('id, created_at, job_description, overall_score')
-        .not('overall_score', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
+      const { data: completedData, error: completedError } = await supabase.from('interviews').select('id, created_at, job_description, overall_score').not('overall_score', 'is', null).order('created_at', { ascending: false }).limit(5);
       if (completedData && !completedError) {
         setRecentInterviews(completedData);
       }
-      
       setIsPageLoading(false);
     };
-
     fetchData();
   }, []);
 
   const handleStartInterview = async () => {
-    // This function remains the same, but will be disabled if an interview is in progress
     setIsLoading(true);
     try {
       const response = await fetch('/api/interview/generate', {
@@ -90,7 +67,6 @@ export default function Dashboard() {
     }
   };
   
-  // A simple skeleton loader for the "Recent Activity" list
   const RecentActivitySkeleton = () => (
     <div className="space-y-2 p-4">
         <div className="h-10 bg-gray-700 rounded-md animate-pulse"></div>
@@ -101,15 +77,15 @@ export default function Dashboard() {
 
   return (
     <div>
+      {/* --- FIX APPLIED HERE: Replaced ' with ' --- */}
       <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
       <p className="text-gray-400 mb-8">Let's get you prepared for your next interview.</p>
       
-      {/* --- NEW: Conditional Rendering based on in-progress interview --- */}
       {inProgressInterview ? (
-        // If an interview is in progress, show the resume card
         <div className="bg-yellow-900/50 p-8 rounded-lg space-y-4 border border-yellow-700 text-center">
             <ExclamationTriangleIcon className="h-12 w-12 text-yellow-400 mx-auto" />
             <h2 className="text-2xl font-bold">You have an interview in progress!</h2>
+            {/* --- FIX APPLIED HERE: Replaced " with " --- */}
             <p className="text-yellow-300">Finish your interview for "{inProgressInterview.job_description.substring(0, 60)}..." before starting a new one.</p>
             <Link 
                 href={`/interview/${inProgressInterview.id}`}
@@ -120,7 +96,6 @@ export default function Dashboard() {
             </Link>
         </div>
       ) : (
-        // Otherwise, show the regular "Start New Interview" card
         <div className="bg-gray-800 p-8 rounded-lg space-y-6 border border-gray-700">
           <h2 className="text-xl font-semibold">Start a New Mock Interview</h2>
           <div>
@@ -139,7 +114,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Activity Section */}
       <div className="mt-12">
         <h2 className="text-xl font-semibold mb-4">Completed Interviews</h2>
         <div className="bg-gray-800 border border-gray-700 rounded-lg">
@@ -156,6 +130,7 @@ export default function Dashboard() {
                 ))}
               </ul>
             ) : (
+              // --- FIX APPLIED HERE: Replaced ' with ' ---
               <div className="p-8 text-center"><p className="text-gray-400">You haven't completed any interviews yet.</p></div>
             )
           )}
