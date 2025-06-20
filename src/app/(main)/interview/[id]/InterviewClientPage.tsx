@@ -47,15 +47,23 @@ export default function InterviewClientPage({ id }: { id: string }) {
     }
   }, [interviewData, isAnalyzing, isListening, currentQuestionIndex, id, router]);
 
-  const triggerWarning = useCallback((message: string) => { if (!hasBeenWarned) { setWarningMessage(message); setShowWarning(true); setHasBeenWarned(true); } }, [hasBeenWarned]);
+  const triggerWarning = useCallback((message: string) => {
+    if (!hasBeenWarned) {
+      setWarningMessage(message);
+      setShowWarning(true);
+      setHasBeenWarned(true);
+    }
+  }, [hasBeenWarned]);
 
   useEffect(() => {
     const createFaceDetector = async () => {
       try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
         const detector = await FaceDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite` }, runningMode: 'VIDEO' });
         setFaceDetector(detector);
-      } catch (e) { console.error("Error initializing MediaPipe FaceDetector:", e); }
+      } catch (e) {
+        console.error("Error initializing MediaPipe FaceDetector:", e);
+      }
     };
     void createFaceDetector();
     const handleVisibilityChange = () => { if (document.hidden) { void (hasBeenWarned ? disqualifyAndMoveNext("Tab Switched") : triggerWarning("Please remain on this tab. Switching again will disqualify the question.")); } };
@@ -73,15 +81,30 @@ export default function InterviewClientPage({ id }: { id: string }) {
     }, 2500);
   }, [faceDetector, hasBeenWarned, disqualifyAndMoveNext, triggerWarning]);
   
-  useEffect(() => { const fetchInterviewData = async () => { const supabase = createClient(); const { data, error } = await supabase.from('interviews').select(`id, questions (id, question_text)`).eq('id', id).single(); if (error || !data) { toast.error("Could not load interview data."); router.push('/dashboard'); } else { setInterviewData(data as InterviewData); setIsLoading(false); } }; void fetchInterviewData(); }, [id, router]);
+  useEffect(() => {
+    const fetchInterviewData = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('interviews').select(`id, questions (id, question_text)`).eq('id', id).single();
+      if (error || !data) {
+        toast.error("Could not load interview data.");
+        router.push('/dashboard');
+      } else {
+        setInterviewData(data as InterviewData);
+        setIsLoading(false);
+      }
+    };
+    void fetchInterviewData();
+  }, [id, router]);
+
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true; recognition.interimResults = true;
+      recognition.continuous = true;
+      recognition.interimResults = true;
       recognition.onresult = (event: SpeechRecognitionEvent) => { let finalTranscript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; } setTranscript(prev => prev + finalTranscript); };
       recognition.onend = () => setIsListening(false);
-      recognition.onerror = (event: SpeechRecognitionError) => { toast.error(`Speech recognition error: ${event.error}.`); };
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => { toast.error(`Speech recognition error: ${event.error}.`); };
       recognitionRef.current = recognition;
     }
   }, []);
