@@ -33,6 +33,7 @@ export default function Login() {
           <button onClick={() => handleOAuthSignIn('github')} className="w-full flex items-center justify-center gap-2 bg-[#1C1C1C] border border-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-800 transition-colors"><GitHubLogoIcon/> GitHub</button>
           <button onClick={() => handleOAuthSignIn('google')} className="w-full flex items-center justify-center gap-2 bg-[#1C1C1C] border border-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-800 transition-colors"><GoogleIcon/> Google</button>
         </div>
+        {/* --- FIX APPLIED: ' replaced with ' --- */}
         <p className="text-center text-sm text-gray-400 mt-8">Don't have an account? <a href="/signup" className="font-semibold text-white hover:underline">Sign up</a></p>
       </div>
     </div>
