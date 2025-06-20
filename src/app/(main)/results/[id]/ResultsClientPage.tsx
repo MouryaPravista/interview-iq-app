@@ -29,7 +29,7 @@ export default function ResultsClientPage({ id }: { id: string }) {
       }
       setIsLoading(false);
     };
-    setTimeout(fetchResults, 500);
+    void setTimeout(fetchResults, 500);
   }, [id]);
 
   if (isLoading) return <ResultsSkeleton />;
@@ -45,7 +45,6 @@ export default function ResultsClientPage({ id }: { id: string }) {
                 <svg className="w-full h-full" viewBox="0 0 36 36"><path className="text-gray-700" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3"></path><path className="text-blue-500" strokeDasharray={`${results.overall_score}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"></path></svg>
                 <div className="absolute inset-0 flex items-center justify-center"><span className="text-4xl font-bold">{results.overall_score}</span></div>
             </div>
-            {/* --- FIX APPLIED --- */}
             <p className="text-center text-gray-400 mt-4 text-sm">Good job! You did well, but there's room for improvement.</p>
         </div>
         <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg border border-gray-700">

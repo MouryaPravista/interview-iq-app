@@ -28,7 +28,7 @@ export default function Dashboard() {
       if (completedData && !completedError) setRecentInterviews(completedData);
       setIsPageLoading(false);
     };
-    fetchData();
+    void fetchData();
   }, []);
 
   const handleStartInterview = async () => {
@@ -51,13 +51,11 @@ export default function Dashboard() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-      {/* --- FIX APPLIED --- */}
       <p className="text-gray-400 mb-8">Let's get you prepared for your next interview.</p>
       {inProgressInterview ? (
         <div className="bg-yellow-900/50 p-8 rounded-lg space-y-4 border border-yellow-700 text-center">
             <ExclamationTriangleIcon className="h-12 w-12 text-yellow-400 mx-auto" />
             <h2 className="text-2xl font-bold">You have an interview in progress!</h2>
-            {/* --- FIX APPLIED --- */}
             <p className="text-yellow-300">Finish your interview for "{inProgressInterview.job_description.substring(0, 60)}..." before starting a new one.</p>
             <Link href={`/interview/${inProgressInterview.id}`} className="inline-flex items-center justify-center gap-2 bg-yellow-500 text-black font-bold py-3 px-6 rounded-md hover:bg-yellow-400 transition-colors"><PlayIcon />Resume Interview</Link>
         </div>
