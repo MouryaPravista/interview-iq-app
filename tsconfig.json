@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -18,13 +22,22 @@
       }
     ],
     // --- FIX APPLIED HERE ---
-    // We are explicitly telling TypeScript to include the types for the Web Speech API.
-    // This guarantees that 'SpeechRecognitionErrorEvent' will be found during the build.
-    "types": ["@types/webspeechapi"],
+    // The entire "types" array has been REMOVED.
+    // This allows TypeScript to automatically detect the types from its own library
+    // and from the custom types we defined in `src/lib/types.ts`, resolving all conflicts.
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
