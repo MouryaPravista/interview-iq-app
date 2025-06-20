@@ -20,8 +20,8 @@ export default function ResultsClientPage({ id }: { id: string }) {
   useEffect(() => {
     const fetchResults = async () => {
       const supabase = createClient();
-      const { data, error } = await supabase.from('interviews').select('id, overall_score, questions ( id, score, question_text, user_answer, ai_feedback )').eq('id', id).not('overall_score', 'is', null).single();
-      if (error || !data) { setError("Failed to load interview results."); } else {
+      const { data, error: dbError } = await supabase.from('interviews').select('id, overall_score, questions ( id, score, question_text, user_answer, ai_feedback )').eq('id', id).not('overall_score', 'is', null).single();
+      if (dbError || !data) { setError("Failed to load interview results."); } else {
         setResults(data as ResultData);
         const validQuestions = data.questions.filter(q => q.score !== null);
         const techScore = validQuestions.length > 0 ? validQuestions.reduce((sum, q) => sum + (q.score || 0), 0) / validQuestions.length : 0;

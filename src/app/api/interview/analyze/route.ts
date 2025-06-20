@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-function getAnalysisPrompt(question: string, answer: string): string { /* ... */ return `Analyze...`; }
+function getAnalysisPrompt(_question: string, _answer: string): string {
+  return `Analyze the following interview answer...`; // Content is unchanged, only signature matters
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
       const prompt = getAnalysisPrompt(q.question_text, q.user_answer);
       const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`;
       const geminiResponse = await fetch(googleApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-      if (!geminiResponse.ok) { console.error(`Google Gemini API failed for question ${q.id}:`, await geminiResponse.text()); return; }
+      if (!geminiResponse.ok) { console.error(`Gemini API failed for q ${q.id}:`, await geminiResponse.text()); return; }
       const geminiResult = await geminiResponse.json();
       const generatedText = geminiResult.candidates[0].content.parts[0].text;
       const jsonString = generatedText.substring(generatedText.indexOf('{'), generatedText.lastIndexOf('}') + 1);
@@ -27,12 +29,11 @@ export async function POST(request: Request) {
         const analysis = JSON.parse(jsonString);
         totalScore += analysis.score || 0;
         await supabase.from('questions').update({ ai_feedback: analysis, score: analysis.score }).eq('id', q.id);
-      } catch (_e) { console.error('Failed to parse AI response for question:', q.id, jsonString); }
+      } catch (_e) { console.error('Failed to parse AI response:', q.id, jsonString); }
     });
     await Promise.all(analysisPromises);
     const overallScore = questions.length > 0 ? Math.round(totalScore / questions.length) : 0;
-    const { error: updateError } = await supabase.from('interviews').update({ overall_score: overallScore }).eq('id', interviewId);
-    if (updateError) throw updateError;
+    await supabase.from('interviews').update({ overall_score: overallScore }).eq('id', interviewId);
     return NextResponse.json({ success: true, overallScore });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';

@@ -22,10 +22,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
-      const { data: inProgressData, error: inProgressError } = await supabase.from('interviews').select('id, job_description').is('overall_score', null).order('created_at', { ascending: false }).limit(1).single();
-      if (inProgressData && !inProgressError) setInProgressInterview(inProgressData);
-      const { data: completedData, error: completedError } = await supabase.from('interviews').select('id, created_at, job_description, overall_score').not('overall_score', 'is', null).order('created_at', { ascending: false }).limit(5);
-      if (completedData && !completedError) setRecentInterviews(completedData);
+      const { data: inProgressData } = await supabase.from('interviews').select('id, job_description').is('overall_score', null).order('created_at', { ascending: false }).limit(1).single();
+      setInProgressInterview(inProgressData);
+      const { data: completedData } = await supabase.from('interviews').select('id, created_at, job_description, overall_score').not('overall_score', 'is', null).order('created_at', { ascending: false }).limit(5);
+      if (completedData) setRecentInterviews(completedData);
       setIsPageLoading(false);
     };
     void fetchData();
