@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
-import { ExitIcon } from '@radix-ui/react-icons';
+import { ExitIcon, PersonIcon } from '@radix-ui/react-icons'; // --- IMPORT PERSON ICON ---
+import Link from 'next/link'; // --- IMPORT LINK ---
 
 export default function UserButton() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function UserButton() {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
     };
-    fetchUser();
+    void fetchUser();
   }, [supabase.auth]);
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function UserButton() {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownRef]);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -41,7 +42,6 @@ export default function UserButton() {
     if (!user) return '?';
     const fullName = user.user_metadata?.full_name;
     if (fullName) {
-      // --- FIX APPLIED HERE: Replaced 'any[]' with the correct type 'string' ---
       return fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
     }
     return user.email?.[0].toUpperCase() || 'U';
@@ -57,11 +57,18 @@ export default function UserButton() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-[#1C1C1C] border border-gray-700 rounded-md shadow-lg py-1 z-10">
+        <div className="absolute right-0 mt-2 w-56 bg-[#1C1C1C] border border-gray-700 rounded-md shadow-lg py-1 z-10">
           <div className="px-4 py-2 border-b border-gray-700">
             <p className="text-sm font-semibold text-white truncate">{user?.user_metadata?.full_name || 'User'}</p>
             <p className="text-xs text-gray-400 truncate">{user?.email}</p>
           </div>
+          
+          {/* --- NEW PROFILE LINK ADDED --- */}
+          <Link href="/profile" className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-2 transition-colors" onClick={() => setIsOpen(false)}>
+            <PersonIcon />
+            View Profile
+          </Link>
+
           <button
             onClick={handleLogout}
             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white flex items-center gap-2 transition-colors"
