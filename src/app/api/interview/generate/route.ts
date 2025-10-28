@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     const prompt = getRobustPrompt(jobDescription, difficulty);
-    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`;
+    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`;
     
     const geminiResponse = await fetch(googleApiUrl, {
         method: 'POST',

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 // This specific import path is the correct way to use pdf-parse in a Next.js ES Module environment.
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 
+
 // The prompt for analyzing a resume.
 function getResumePrompt(resumeText: string, difficulty: string): string {
   const questionCount = 7;
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     
     // 4. Call the Google Gemini AI with the extracted resume text
     const prompt = getResumePrompt(resumeText, difficulty);
-    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`;
+    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`;
     const geminiResponse = await fetch(googleApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
