@@ -7,7 +7,6 @@ import WarningBanner from '@/components/ui/WarningBanner';
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
-import type { ISpeechRecognition, ISpeechRecognitionEvent, ISpeechRecognitionErrorEvent, ISpeechRecognitionStatic } from '@/lib/types';
 import { Pencil1Icon, CheckIcon, Cross1Icon } from '@radix-ui/react-icons';
 
 interface Question { id: string; question_text: string; }
@@ -16,14 +15,21 @@ interface InterviewData { id: string; questions: Question[]; }
 export default function InterviewClientPage({ id }: { id: string }) {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
-  const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const faceDetectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- REPLACEMENT FOR SPEECH RECOGNITION ---
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [faceDetector, setFaceDetector] = useState<FaceDetector | undefined>(undefined);
   const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const [isListening, setIsListening] = useState(false);
+
+  // --- NEW AND UPDATED UI STATES ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasBeenWarned, setHasBeenWarned] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
@@ -34,7 +40,7 @@ export default function InterviewClientPage({ id }: { id: string }) {
 
   const disqualifyAndMoveNext = useCallback(async (reason: string) => {
     if (!interviewData || isAnalyzing) return;
-    if (isListening) recognitionRef.current?.stop();
+    if (isRecording) mediaRecorderRef.current?.stop();
     const finalTranscript = `[Answer Disqualified: ${reason}]`;
     await fetch(`/api/interview/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionId: interviewData.questions[currentQuestionIndex].id, userAnswer: finalTranscript }) });
     setTranscript('');
@@ -50,21 +56,18 @@ export default function InterviewClientPage({ id }: { id: string }) {
         toast.error(err instanceof Error ? err.message : "An error occurred during final analysis.");
       }
     }
-  }, [interviewData, isAnalyzing, isListening, currentQuestionIndex, id, router]);
+  }, [interviewData, isAnalyzing, isRecording, currentQuestionIndex, id, router]);
 
   const triggerWarning = useCallback((message: string) => { if (!hasBeenWarned) { setWarningMessage(message); setShowWarning(true); setHasBeenWarned(true); } }, [hasBeenWarned]);
 
-  // --- CONSOLIDATED AND CORRECTED SETUP HOOK ---
   useEffect(() => {
     const initialize = async () => {
-      // 1. Initialize Face Detector
       try {
         const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
         const detector = await FaceDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite` }, runningMode: 'VIDEO' });
         setFaceDetector(detector);
       } catch (e) { console.error("Error initializing MediaPipe:", e); }
 
-      // 2. Fetch Interview Data
       const supabase = createClient();
       const { data, error } = await supabase.from('interviews').select(`id, questions (id, question_text)`).eq('id', id).single();
       if (error || !data) {
@@ -73,26 +76,14 @@ export default function InterviewClientPage({ id }: { id: string }) {
         return;
       }
       setInterviewData(data as InterviewData);
-
-      // 3. Set up Speech Recognition
-      const SpeechRecognition: ISpeechRecognitionStatic | undefined = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition: ISpeechRecognition = new SpeechRecognition();
-        recognition.continuous = true; recognition.interimResults = true;
-        recognition.onresult = (event) => { let finalTranscript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; } setTranscript(prev => prev + finalTranscript); };
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = (event) => { toast.error(`Speech recognition error: ${event.error}.`); };
-        recognitionRef.current = recognition;
-      }
       
-      // 4. Set loading to false only after all setup is complete
+      // --- SPEECH RECOGNITION SETUP IS NOW REMOVED ---
+      
       setIsLoading(false);
     };
-    
     void initialize();
   }, [id, router]);
 
-  // --- Hook for anti-cheating features ---
   useEffect(() => {
     const handleVisibilityChange = () => { if (document.hidden) { void (hasBeenWarned ? disqualifyAndMoveNext("Tab Switched") : triggerWarning("Please remain on this tab. Switching will disqualify the question.")); } };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -109,11 +100,58 @@ export default function InterviewClientPage({ id }: { id: string }) {
     }, 2500);
   }, [faceDetector, hasBeenWarned, disqualifyAndMoveNext, triggerWarning]);
 
-  const handleToggleListening = () => { if (isEditing) setIsEditing(false); if (isListening) { recognitionRef.current?.stop(); } else { setTranscript(''); recognitionRef.current?.start(); } setIsListening(!isListening); };
+  // --- COMPLETELY NEW FUNCTION TO HANDLE AUDIO RECORDING AND TRANSCRIPTION ---
+  const handleToggleRecording = async () => {
+    if (isEditing) setIsEditing(false);
+
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+    } else {
+      setTranscript('');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunksRef.current = [];
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorderRef.current.onstop = async () => {
+          setIsRecording(false);
+          setIsTranscribing(true);
+
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          
+          try {
+            const response = await fetch('/api/interview/transcribe', {
+              method: 'POST',
+              body: formData,
+            });
+            if (!response.ok) throw new Error('Transcription failed.');
+            const result = await response.json();
+            setTranscript(result.transcript);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'An error occurred during transcription.');
+          } finally {
+            setIsTranscribing(false);
+          }
+          // Clean up the stream to release the microphone
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+      } catch (err) {
+        toast.error("Could not access microphone. Please enable it in your browser settings.");
+      }
+    }
+  };
   
   const handleNextQuestion = async () => {
-    if (!interviewData) return;
-    if (isListening) recognitionRef.current?.stop();
+    if (!interviewData || isRecording) return;
     const finalTranscript = isEditing ? editedTranscript : transcript;
     await fetch(`/api/interview/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionId: interviewData.questions[currentQuestionIndex].id, userAnswer: finalTranscript }) });
     setTranscript(''); setEditedTranscript(''); setIsEditing(false);
@@ -146,8 +184,12 @@ export default function InterviewClientPage({ id }: { id: string }) {
             <Webcam ref={webcamRef} mirrored={true} className="absolute top-0 left-0 w-full h-full object-cover" onUserMedia={startFaceDetectionLoop} videoConstraints={{ width: 1280, height: 720 }}/>
           </div>
           <div className="flex justify-center gap-4">
-            <button onClick={handleToggleListening} disabled={isAnalyzing} className={`px-6 py-3 rounded-lg font-bold text-white disabled:bg-gray-600 transition-colors ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>{isListening ? 'Stop Answering' : 'Start Answering'}</button>
-            <button onClick={handleNextQuestion} disabled={isAnalyzing} className="px-6 py-3 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed flex items-center justify-center transition-colors">{isAnalyzing ? "Analyzing..." : (isLastQuestion ? 'Finish & See Results' : 'Save & Next Question')}</button>
+            <button onClick={handleToggleRecording} disabled={isAnalyzing} className={`px-6 py-3 rounded-lg font-bold text-white disabled:bg-gray-600 transition-colors ${isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                {isRecording ? 'Stop Answering' : (isTranscribing ? 'Transcribing...' : 'Start Answering')}
+            </button>
+            <button onClick={handleNextQuestion} disabled={isAnalyzing || isRecording || isTranscribing} className="px-6 py-3 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed flex items-center justify-center transition-colors">
+                {isAnalyzing ? "Analyzing..." : (isLastQuestion ? 'Finish & See Results' : 'Save & Next Question')}
+            </button>
           </div>
         </div>
         <div className="md:w-1/3 bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4 flex flex-col">
@@ -157,7 +199,7 @@ export default function InterviewClientPage({ id }: { id: string }) {
           <div className="flex-grow flex flex-col">
             <div className="flex justify-between items-center mb-2">
                 <h3 className="font-semibold">Your Answer (Transcript):</h3>
-                {!isListening && transcript && !isEditing && (<button onClick={handleEditClick} className="text-gray-400 hover:text-white p-1 rounded-md flex items-center gap-1 text-sm"><Pencil1Icon /> Edit</button>)}
+                {!isRecording && !isTranscribing && transcript && !isEditing && (<button onClick={handleEditClick} className="text-gray-400 hover:text-white p-1 rounded-md flex items-center gap-1 text-sm"><Pencil1Icon /> Edit</button>)}
             </div>
             {isEditing ? (
               <div className="flex-grow flex flex-col gap-2">
@@ -167,7 +209,7 @@ export default function InterviewClientPage({ id }: { id: string }) {
                     <button onClick={handleSaveEdit} className="text-sm px-3 py-1 rounded-md bg-green-600 hover:bg-green-500 flex items-center gap-1"><CheckIcon /> Save</button>
                 </div>
               </div>
-            ) : ( <p className="text-gray-400 min-h-[100px] flex-grow">{transcript || "..."}</p> )}
+            ) : ( <p className="text-gray-400 min-h-[100px] flex-grow">{isTranscribing ? "Processing your answer..." : (transcript || "...")}</p> )}
           </div>
         </div>
       </div>
