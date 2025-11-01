@@ -1,20 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-// --- THE CORRECTED PROMPT FUNCTION ---
-// The underscores have been removed from the parameters, so they are correctly passed to the prompt string.
+const openai = new OpenAI();
+
+// --- UPDATED PROMPT FOR OPENAI'S JSON MODE ---
 function getAnalysisPrompt(question: string, answer: string): string {
-  return `Analyze the following interview answer based on the question asked. Provide feedback in a structured JSON format.
-
-  The JSON object must contain three keys:
-  1. "strengths": An array of strings highlighting what the user did well. Be specific (e.g., "Used the STAR method effectively," "Provided a concrete example").
-  2. "improvements": An array of strings suggesting how the user could improve their answer. Be constructive (e.g., "Could quantify the result more," "Try to be more concise").
-  3. "score": An integer between 0 and 100, representing the quality of the answer.
-
-  Return ONLY the JSON object, with no other text or explanations.
+  return `Analyze the following interview answer based on the question asked.
 
   Question: "${question}"
   Answer: "${answer}"
+
+  Provide feedback in a structured JSON object. The object must contain three keys:
+  1. "strengths": An array of strings highlighting what the user did well. Be specific (e.g., "Used the STAR method effectively," "Provided a concrete example").
+  2. "improvements": An array of strings suggesting how the user could improve. Be constructive (e.g., "Could quantify the result more," "Try to be more concise").
+  3. "score": An integer between 0 and 100 representing the answer's quality.
   `;
 }
 
@@ -39,45 +39,37 @@ export async function POST(request: Request) {
     let totalScore = 0;
     const analysisPromises = questions.map(async (q) => {
       if (!q.user_answer || q.user_answer.startsWith('[Answer Disqualified')) {
-        // Skip analysis for disqualified or empty answers
         return Promise.resolve();
       }
 
       const prompt = getAnalysisPrompt(q.question_text, q.user_answer);
-      const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`;
       
-      const geminiResponse = await fetch(googleApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      if (!geminiResponse.ok) {
-        console.error(`Google Gemini API failed for question ${q.id}:`, await geminiResponse.text());
-        // Don't update the question if the API fails
-        return Promise.resolve();
-      }
-
-      const geminiResult = await geminiResponse.json();
-      const generatedText = geminiResult.candidates[0].content.parts[0].text;
-      const jsonString = generatedText.substring(generatedText.indexOf('{'), generatedText.lastIndexOf('}') + 1);
-
       try {
-        const analysis = JSON.parse(jsonString);
+        // --- REPLACED GEMINI FETCH WITH OPENAI SDK CALL ---
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: "You are a helpful assistant that provides interview feedback in JSON format." },
+              { role: "user", content: prompt }
+            ]
+        });
+
+        if (!completion.choices[0].message.content) {
+            throw new Error(`OpenAI returned an empty response for question ${q.id}.`);
+        }
+
+        const analysis = JSON.parse(completion.choices[0].message.content);
         totalScore += analysis.score || 0;
-        // Update the question with the new feedback
         await supabase.from('questions').update({ ai_feedback: analysis, score: analysis.score }).eq('id', q.id);
       } catch (e) {
-        // Log the actual error object
-        console.error('Failed to parse AI response for question:', q.id, "Error:", e, "Raw Text:", jsonString);
-        // Don't update the question if parsing fails
+        console.error('Failed to analyze or parse response for question:', q.id, "Error:", e);
         return Promise.resolve();
       }
     });
 
     await Promise.all(analysisPromises);
     
-    // Only calculate the average based on questions that were actually scored
     const scoredQuestions = questions.filter(q => !q.user_answer?.startsWith('[Answer Disqualified'));
     const overallScore = scoredQuestions.length > 0 ? Math.round(totalScore / scoredQuestions.length) : 0;
     

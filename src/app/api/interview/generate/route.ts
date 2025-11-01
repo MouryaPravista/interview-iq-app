@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-// --- A NEW, MORE ROBUST PROMPT ---
-// This prompt is simpler and more direct, making it far more reliable for the AI.
-// It still incorporates the key dynamic elements we need.
-function getRobustPrompt(jobDescription: string, difficulty: string): string {
+const openai = new OpenAI(); // Automatically uses OPENAI_API_KEY from environment variables
+
+// --- UPDATED PROMPT FOR OPENAI'S JSON MODE ---
+function getOpenAIPrompt(jobDescription: string, difficulty: string): string {
   let questionCount: number;
   let difficultyGuideline: string;
 
@@ -24,20 +25,16 @@ function getRobustPrompt(jobDescription: string, difficulty: string): string {
   }
 
   return `
-    Generate exactly ${questionCount} interview questions for a candidate based on the following job description.
-    
+    You are an expert hiring manager. Generate exactly ${questionCount} interview questions for a candidate based on the following job description.
     The difficulty level for the questions should be: "${difficulty}". 
     Guideline for this difficulty: ${difficultyGuideline}
     
-    To ensure variety, please generate a different set of questions than you might have previously for this same prompt.
-
     The job description is:
     ---
     ${jobDescription}
     ---
 
-    Your response MUST be a single, valid JSON array of strings. Do not include any other text, comments, or markdown formatting.
-    Example Response: ["What is your experience with React?", "Describe a time you handled a difficult team member."]
+    Return your response as a JSON object with a single key "questions" which contains an array of the question strings.
   `;
 }
 
@@ -54,31 +51,27 @@ export async function POST(request: Request) {
       return new NextResponse(JSON.stringify({ error: 'Missing job description or difficulty' }), { status: 400 });
     }
 
-    const prompt = getRobustPrompt(jobDescription, difficulty);
-    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`;
-    
-    const geminiResponse = await fetch(googleApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    const prompt = getOpenAIPrompt(jobDescription, difficulty);
+
+    // --- REPLACED GEMINI FETCH WITH OPENAI SDK CALL ---
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Or "gpt-3.5-turbo", a powerful and cost-effective model
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: "You are a helpful assistant designed to output JSON." },
+        { role: "user", content: prompt }
+      ]
     });
 
-    if (!geminiResponse.ok) {
-        const errorText = await geminiResponse.text();
-        throw new Error(`Google Gemini API failed: ${errorText}`);
+    if (!completion.choices[0].message.content) {
+      throw new Error('OpenAI returned an empty response.');
     }
 
-    const geminiResult = await geminiResponse.json();
-    
-    let generatedText = geminiResult.candidates[0].content.parts[0].text;
-    generatedText = generatedText.trim().replace(/^```json\n/, '').replace(/\n```$/, '');
+    const result = JSON.parse(completion.choices[0].message.content);
+    const questionsList: string[] = result.questions;
 
-    let questionsList: string[] = [];
-    try {
-      questionsList = JSON.parse(generatedText);
-    } catch (e) {
-      console.error("CRITICAL ERROR: Failed to parse JSON from AI. Raw text from AI was:", generatedText);
-      throw new Error('The AI returned a response in an unexpected format. Please try again.');
+    if (!Array.isArray(questionsList) || questionsList.length === 0) {
+        throw new Error('AI failed to generate questions in the expected format.');
     }
 
     const { data: interviewData, error: interviewError } = await supabase
