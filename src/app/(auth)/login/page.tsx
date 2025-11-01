@@ -18,6 +18,8 @@ export default function Login() {
   const handleOAuthSignIn = async (provider: 'github' | 'google') => { const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/api/auth/callback` } }); if (error) { toast.error(`Failed to sign in with ${provider}.`); } };
 
   return (
+    // The main content of the login page remains, but the outer centering wrappers are removed
+    // as the new layout now handles all positioning.
     <div>
       <div className="text-center mb-6"><h1 className="text-3xl font-bold">Welcome Back</h1><p className="text-gray-400 mt-2">Log in to continue to Interview IQ</p></div>
       <div className="bg-[#111111] p-8 rounded-lg border border-gray-800">
