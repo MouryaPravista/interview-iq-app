@@ -110,27 +110,27 @@ export default function Dashboard() {
       ) : null}
 
       <fieldset disabled={!!inProgressInterview || isLoading} className="disabled:opacity-50 disabled:cursor-not-allowed">
-        <div className="bg-gray-800 p-8 rounded-lg border border-gray-700">
+        <div className="bg-[#111111] p-8 rounded-lg border border-[#1C1C1C]">
           <h2 className="text-xl font-semibold mb-6 text-center">Start a New Mock Interview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
             <div className="space-y-4 p-4 rounded-md border border-gray-700 flex flex-col">
               <h3 className="font-semibold text-center text-gray-300">Practice for a Specific Job</h3>
-              <textarea id="job-description" rows={8} className="w-full flex-grow bg-[#1C1C1C] border border-gray-600 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste a job description..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)}/>
-              <button onClick={handleStartFromJD} disabled={!jobDescription || isLoading} className="w-full bg-white text-black font-bold py-3 px-6 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+              <textarea id="job-description" rows={8} className="w-full flex-grow bg-[#1C1C1C] border border-gray-700 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-[#10B981]" placeholder="Paste a job description..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)}/>
+              <button onClick={handleStartFromJD} disabled={!jobDescription || isLoading} className="w-full bg-[#10B981] text-white font-bold py-3 px-6 rounded-md hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                 {isLoading && !!jobDescription ? "Processing..." : "Start from Job Description →"}
               </button>
             </div>
             <div className="space-y-4 p-4 rounded-md border border-gray-700 flex flex-col">
               <h3 className="font-semibold text-center text-gray-300">Practice Based on Your Resume</h3>
               <div className="flex-grow flex flex-col items-center justify-center">
-                <label htmlFor="resume-upload" className="w-full h-full cursor-pointer bg-[#1C1C1C] border-2 border-dashed border-gray-600 rounded-md p-6 text-center hover:border-blue-500 transition-colors flex flex-col items-center justify-center">
+                <label htmlFor="resume-upload" className="w-full h-full cursor-pointer bg-[#1C1C1C] border-2 border-dashed border-gray-700 rounded-md p-6 text-center hover:border-[#10B981] transition-colors flex flex-col items-center justify-center">
                   <UploadIcon className="mx-auto h-8 w-8 text-gray-500 mb-2"/>
-                  <span className="text-blue-400 font-semibold">Click to upload a PDF</span>
+                  <span className="text-teal-400 font-semibold">Click to upload a PDF</span>
                   <p className="text-xs text-gray-500 mt-1 truncate w-full px-2">{selectedFile ? selectedFile.name : "(Max 2MB)"}</p>
                   <input id="resume-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileChange}/>
                 </label>
               </div>
-              <button onClick={handleStartFromResume} disabled={!selectedFile || isLoading} className="w-full bg-white text-black font-bold py-3 px-6 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+              <button onClick={handleStartFromResume} disabled={!selectedFile || isLoading} className="w-full bg-[#10B981] text-white font-bold py-3 px-6 rounded-md hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                 {isLoading && !!selectedFile ? "Processing..." : "Start from Resume →"}
               </button>
             </div>
@@ -138,7 +138,7 @@ export default function Dashboard() {
           <div className="mt-6 border-t border-gray-700 pt-6">
             <label className="block text-sm font-medium text-gray-300 mb-2 text-center">Configure Interview Difficulty (Applies to Both)</label>
             <div className="flex justify-center space-x-4">
-              {['Easy', 'Medium', 'Hard'].map(level => (<button key={level} onClick={() => setDifficulty(level)} className={`px-4 py-2 rounded-md font-semibold text-sm ${difficulty === level ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>{level}</button>))}
+              {['Easy', 'Medium', 'Hard'].map(level => (<button key={level} onClick={() => setDifficulty(level)} className={`px-4 py-2 rounded-md font-semibold text-sm transition-colors ${difficulty === level ? 'bg-[#10B981] text-white' : 'bg-[#1C1C1C] hover:bg-gray-800'}`}>{level}</button>))}
             </div>
           </div>
         </div>
@@ -146,10 +146,10 @@ export default function Dashboard() {
 
       <div className="mt-12">
         <h2 className="text-xl font-semibold mb-4">Completed Interviews</h2>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg">
+        <div className="bg-[#111111] border border-[#1C1C1C] rounded-lg">
           {isPageLoading ? <RecentActivitySkeleton /> : ( recentInterviews.length > 0 ? (
-              <ul className="divide-y divide-gray-700">
-                {recentInterviews.map((interview) => ( <li key={interview.id}><Link href={`/results/${interview.id}`} className="flex items-center justify-between p-4 hover:bg-gray-700/50 transition-colors"><div className="flex-grow min-w-0"><p className="font-semibold truncate">{`Interview for: ${interview.job_description.substring(0, 50)}...`}</p><p className="text-sm text-gray-400">Completed on {new Date(interview.created_at).toLocaleDateString()}</p></div><div className="flex items-center gap-4 ml-4 flex-shrink-0"><span className="font-bold text-lg">{interview.overall_score}</span><ChevronRightIcon className="h-5 w-5 text-gray-400" /></div></Link></li> ))}
+              <ul className="divide-y divide-[#1C1C1C]">
+                {recentInterviews.map((interview) => ( <li key={interview.id}><Link href={`/results/${interview.id}`} className="flex items-center justify-between p-4 hover:bg-[#1C1C1C] transition-colors"><div className="flex-grow min-w-0"><p className="font-semibold truncate">{`Interview for: ${interview.job_description.substring(0, 50)}...`}</p><p className="text-sm text-gray-400">Completed on {new Date(interview.created_at).toLocaleDateString()}</p></div><div className="flex items-center gap-4 ml-4 flex-shrink-0"><span className="font-bold text-lg">{interview.overall_score}</span><ChevronRightIcon className="h-5 w-5 text-gray-400" /></div></Link></li> ))}
               </ul>
             ) : ( <div className="p-8 text-center"><p className="text-gray-400">You haven&apos;t completed any interviews yet.</p></div> )
           )}
